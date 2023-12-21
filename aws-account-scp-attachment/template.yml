@@ -22,34 +22,85 @@ Parameters:
     Type: String
     Description: Log level for Lambda function logging, e.g., ERROR, INFO, DEBUG, etc
     Default: INFO
+  ScpCount:
+    Description: Number of SCPs to directly attach to new accounts
+    Type: String
+    Default: 1
+    AllowedValues:
+       - 1
+       - 2
+       - 3
+       - 4
+  ScpId1:
+    Description: SCP for attaching to new account
+    Type: String
+    Default: p-xxxxxxx
+  ScpId2:
+    Description: SCP for attaching to new account
+    Type: String
+    Default: p-xxxxxxx
+  ScpId3:
+    Description: SCP for attaching to new account
+    Type: String
+    Default: p-xxxxxxx
+  ScpId4:
+    Description: SCP for attaching to new account
+    Type: String
+    Default: p-xxxxxxx
+  OuId:
+    Description: Organizational Unit for detecting new account (if not needed, leave blank)
+    Type: String
+    Default: ou-xxxx-xxxxxxx
+  UseOuId:
+    Description: true or false to activate the pOuId parameters
+    Default: false
+    Type: String
+    AllowedValues: [true, false]
+
+Conditions:
+  ShouldUseOU:
+    !Equals [true, !Ref UseOuId]
+  TwoSCPs:
+    !Equals [!Ref ScpCount , 2]
+  ThreeSCPs:
+    !Equals [!Ref ScpCount , 3]
+  FourSCPs:
+    !Equals [!Ref ScpCount , 4]
+
+
+Globals:
+  Function:
+    Runtime: python3.8
+    Tracing: Active
+    Timeout: 60
+    Environment:
+      Variables:
+        LOG_LEVEL: !Ref LogLevel
 
 Resources:
-  MyFunction:
+  AccountSCPAttach:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
-      Handler: myfunction.handler
+      Handler: accountscpattach.lambda_handler
       Runtime: python3.8
       Tracing: Active
       Timeout: 60
       Environment:
         Variables:
           LOG_LEVEL: !Ref LogLevel
-          TABLE_NAME: !Ref MyTable
+          SCP_POLICY_COUNT: !Ref ScpCount
+          DIRECT_ATTACH_SCP_POLICY_ID_1: !Ref ScpId1
+          DIRECT_ATTACH_SCP_POLICY_ID_2: !If [TwoSCPs, !Ref ScpId2, !Ref "AWS::NoValue"]
+          DIRECT_ATTACH_SCP_POLICY_ID_3: !If [ThreeSCPs, !Ref ScpId3, !Ref "AWS::NoValue"]
+          DIRECT_ATTACH_SCP_POLICY_ID_4: !If [FourSCPs, !Ref ScpId4, !Ref "AWS::NoValue"]
+          OU_ID : !If [ShouldUseOU, !Ref OuId, !Ref "AWS::NoValue"]
 
-  MyTable:
-    Type: AWS::Serverless::SimpleTable
 
 Outputs:
-  MyFunctionName:
+  AccountSCPAttachFunctionName:
     Description: "Lambda Function Name"
-    Value: !Ref MyFunction
-  MyFunctionArn:
+    Value: !Ref AccountSCPAttach
+  AccountSCPAttachFunctionArn:
     Description: "Lambda Function ARN"
-    Value: !GetAtt MyFunction.Arn
-  MyTableName:
-    Description: "Table Name"
-    Value: !Ref MyTable
-  MyTableArn:
-    Description: "Table ARN"
-    Value: !GetAtt MyTable.Arn
+    Value: !GetAtt AccountSCPAttach.Arn
